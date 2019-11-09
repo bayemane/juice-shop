@@ -3,9 +3,9 @@ import { WindowRefService } from '../Services/window-ref.service'
 import { Router } from '@angular/router'
 import { Component, OnInit } from '@angular/core'
 import { FormControl, Validators } from '@angular/forms'
-import { library, dom } from '@fortawesome/fontawesome-svg-core'
+import { dom, library } from '@fortawesome/fontawesome-svg-core'
 import { UserService } from '../Services/user.service'
-import { faKey, faEye, faEyeSlash } from '@fortawesome/free-solid-svg-icons'
+import { faEye, faEyeSlash, faKey } from '@fortawesome/free-solid-svg-icons'
 import { faGoogle } from '@fortawesome/free-brands-svg-icons'
 import { FormSubmitService } from '../Services/form-submit.service'
 
@@ -16,9 +16,11 @@ const oauthProviderUrl = 'https://accounts.google.com/o/oauth2/v2/auth'
 const clientId = '1005568560502-6hm16lef8oh46hr2d98vf2ohlnj4nfhq.apps.googleusercontent.com'
 
 const authorizedRedirectURIs: any = {
+  'https://demo.owasp-juice.shop': 'https://demo.owasp-juice.shop',
   'http://demo.owasp-juice.shop': 'http://demo.owasp-juice.shop',
   'https://juice-shop.herokuapp.com': 'https://juice-shop.herokuapp.com',
   'http://juice-shop.herokuapp.com': 'http://juice-shop.herokuapp.com',
+  'https://preview.owasp-juice.shop': 'https://preview.owasp-juice.shop',
   'http://preview.owasp-juice.shop': 'http://preview.owasp-juice.shop',
   'https://juice-shop-staging.herokuapp.com': 'https://juice-shop-staging.herokuapp.com',
   'http://juice-shop-staging.herokuapp.com': 'http://juice-shop-staging.herokuapp.com',

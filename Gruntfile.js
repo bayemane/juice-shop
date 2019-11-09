@@ -34,18 +34,19 @@ module.exports = function (grunt) {
               'package.json',
               'ctf.key',
               'swagger.yml',
-              'frontend/dist/frontend/**',
               'config/*.yml',
               'data/*.js',
               'data/static/**',
               'encryptionkeys/**',
+              'frontend/dist/frontend/**',
               'ftp/**',
+              'i18n/.gitkeep',
               'lib/**',
               'models/*.js',
-              'routes/*.js',
               'node_modules/**',
-              'views/**',
-              'uploads/complaints/.gitkeep'
+              'routes/*.js',
+              'uploads/complaints/.gitkeep',
+              'views/**'
             ],
             dest: 'juice-shop_<%= pkg.version %>/'
           }
@@ -54,7 +55,22 @@ module.exports = function (grunt) {
     }
   })
 
+  grunt.registerTask('checksum', 'Create .md5 checksum files', function () {
+    const fs = require('fs')
+    const crypto = require('crypto')
+    fs.readdirSync('dist/').forEach(file => {
+      const buffer = fs.readFileSync('dist/' + file)
+      const md5 = crypto.createHash('md5')
+      md5.update(buffer)
+      const md5Hash = md5.digest('hex')
+      const md5FileName = 'dist/' + file + '.md5'
+      grunt.file.write(md5FileName, md5Hash)
+      grunt.log.write(`Checksum ${md5Hash} written to file ${md5FileName}.`).verbose.write('...').ok()
+      grunt.log.writeln()
+    })
+  })
+
   grunt.loadNpmTasks('grunt-replace-json')
   grunt.loadNpmTasks('grunt-contrib-compress')
-  grunt.registerTask('package', ['replace_json:manifest', 'compress:pckg'])
+  grunt.registerTask('package', ['replace_json:manifest', 'compress:pckg', 'checksum'])
 }

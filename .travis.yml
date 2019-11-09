@@ -7,28 +7,18 @@ os:
 node_js:
   - 12
   - 10
+  - 13
 stages:
   - lint
   - test
   - integration
-workspaces:
-  create:
-    name: lcov
-    paths:
-      - build/reports/coverage/frontend-tests/lcov.info
-      - build/reports/coverage/server-tests/lcov.info
-matrix:
-  fast_finish: true
-  allow_failures:
-    - os: windows
 env:
   global:
     secure: KBx27d+h4Aa1vsRG1/gBxIFgee5N4Ln9rf1hmCcpHYp+9A+qspXpJRGm8Loy1dF+NhfY0POnQshAzOgG2isv7/CnNIJmWjHLXwqNvMkKpl2EDbl7EGBGByjvR9K9A84rn7BJJAEsb0/6NNofLhvhheL5mxd1SYvdlbewYeyg3dU=
 addons:
   chrome: stable
 install: if [[ -z "$TRAVIS_TAG" ]]; then npm install; fi
-script: if [[ -z "$TRAVIS_TAG" && "$TRAVIS_OS_NAME" != "windows" ]]; then NODE_ENV=test
-  npm test; fi
+script: if [[ -z "$TRAVIS_TAG" && "$TRAVIS_OS_NAME" != "windows" ]]; then NODE_ENV=test npm test; fi
 before_deploy:
   - rm -rf node_modules
   - rm -rf frontend/node_modules
@@ -56,16 +46,13 @@ jobs:
     - stage: integration
       if: tag IS blank
       os: linux
-      workspaces:
-        use:
-          - lcov
       before_script:
         - curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64
           > ./cc-test-reporter
         - chmod +x ./cc-test-reporter
       script:
         - export NODE_ENV=test
-        - npm test # FIXME Remove when workspaces work as expected
+        - npm test
         - npm run frisby
       after_success:
         - "./cc-test-reporter format-coverage -t lcov -o build/reports/coverage/codeclimate.frontend.json build/reports/coverage/frontend-tests/lcov.info"
@@ -83,7 +70,7 @@ jobs:
       if: tag IS blank
       os: linux
       before_install:
-        - chmod +x test/smoke-test/smoke-test.sh
+        - chmod +x test/smoke/smoke-test.sh
       install:
         - npm install --production
         - npm run package
@@ -92,7 +79,7 @@ jobs:
         - tar -zxf juice-shop-*.tgz
         - cd juice-shop_*
         - npm start &
-        - ../../test/smoke-test/smoke-test.sh http://localhost:3000
+        - ../../test/smoke/smoke-test.sh http://localhost:3000
     - stage: deploy
       if: "(branch = master OR branch = develop) AND NOT type = pull_request"
       os: linux

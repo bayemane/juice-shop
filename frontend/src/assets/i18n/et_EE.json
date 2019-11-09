@@ -8,6 +8,12 @@
   "MANDATORY_PASSWORD": "Palun sisesta parool.",
   "LABEL_EMAIL": "E-post",
   "LABEL_PASSWORD": "Salasõna",
+  "SHOW_PASSWORD_ADVICE": "Show password advice",
+  "LOWER_CASE_CRITERIA_MSG": "contains at least one lower character",
+  "UPPER_CASE_CRITERIA_MSG": "contains at least one upper character",
+  "DIGITS_CRITERIA_MSG": "contains at least one digit",
+  "SPECIAL_CHARS_CRITERIA_MSG": "contains at least one special character",
+  "MIN_CHARS_CRITERIA_MSG": "contains at least {{value}} characters",
   "BTN_LOGIN": "Logi sisse",
   "BTN_GOOGLE_LOGIN": "Logi sisse Google kontoga",
   "REMEMBER_ME": "Jäta mind meelde",
@@ -308,5 +314,6 @@
   "LABEL_PAY": "Maksa",
   "LABEL_ADD": "Lisa",
   "REVIEW_DELUXE": "Eduka tehingu korral logitakse teid välja.",
-  "REVIEW_WALLET": "Teid suunatakse tagasi rahakotile."
+  "REVIEW_WALLET": "Teid suunatakse tagasi rahakotile.",
+  "ORDERS_AND_PAYMENT": "Orders & Payment"
 }

@@ -18,7 +18,7 @@ module.exports = function placeOrder () {
           const customer = insecurity.authenticatedUsers.from(req)
           const email = customer ? customer.data ? customer.data.email : '' : ''
           const orderId = insecurity.hash(email).slice(0, 4) + '-' + utils.randomHexString(16)
-          const pdfFile = 'order_' + orderId + '.pdf'
+          const pdfFile = `order_${orderId}.pdf`
           const doc = new PDFDocument()
           const date = new Date().toJSON().slice(0, 10)
           const fileWriter = doc.pipe(fs.createWriteStream(path.join(__dirname, '../ftp/', pdfFile)))
@@ -81,13 +81,13 @@ module.exports = function placeOrder () {
             const product = {
               quantity: BasketItem.quantity,
               id: id,
-              name: name,
+              name: req.__(name),
               price: itemPrice,
               total: itemTotal,
               bonus: itemBonus
             }
             basketProducts.push(product)
-            doc.text(BasketItem.quantity + 'x ' + name + ' ea. ' + itemPrice + ' = ' + itemTotal + '¤')
+            doc.text(BasketItem.quantity + 'x ' + req.__(name) + ' ea. ' + itemPrice + ' = ' + itemTotal + '¤')
             doc.moveDown()
             totalPrice += itemTotal
             totalPoints += itemBonus
@@ -116,7 +116,7 @@ module.exports = function placeOrder () {
           doc.font('Helvetica-Bold', 20).text('Total Price: ' + totalPrice.toFixed(2) + '¤')
           doc.moveDown()
           doc.font('Helvetica-Bold', 15).text('Bonus Points Earned: ' + totalPoints)
-          doc.font('Times-Roman', 15).text('(You will be able to these points for amazing bonuses in the future!)')
+          doc.font('Times-Roman', 15).text('(The bonus points from this order will be added 1:1 to your wallet ¤-fund for future purchases!)')
           doc.moveDown()
           doc.moveDown()
           doc.font('Times-Roman', 15).text('Thank you for your order!')
@@ -157,7 +157,7 @@ module.exports = function placeOrder () {
             res.json({ orderConfirmation: orderId })
           })
         } else {
-          next(new Error('Basket with id=' + id + ' does not exist.'))
+          next(new Error(`Basket with id=${id} does not exist.`))
         }
       }).catch(error => {
         next(error)

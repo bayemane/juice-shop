@@ -2,12 +2,13 @@ import { ChallengeService } from '../Services/challenge.service'
 import { UserService } from '../Services/user.service'
 import { AdministrationService } from '../Services/administration.service'
 import { ConfigurationService } from '../Services/configuration.service'
-import { Component, NgZone, OnInit, EventEmitter, Output } from '@angular/core'
+import { Component, EventEmitter, NgZone, OnInit, Output } from '@angular/core'
 import { CookieService } from 'ngx-cookie'
 import { TranslateService } from '@ngx-translate/core'
 import { Router } from '@angular/router'
 import { SocketIoService } from '../Services/socket-io.service'
 import { LanguagesService } from '../Services/languages.service'
+import { MatSnackBar } from '@angular/material/snack-bar'
 
 import {
   faBomb,
@@ -20,18 +21,18 @@ import {
   faShoppingCart,
   faSignInAlt,
   faSignOutAlt,
+  faThermometerEmpty,
+  faThermometerFull,
+  faThermometerHalf,
+  faThermometerQuarter,
+  faThermometerThreeQuarters,
   faTrophy,
   faUserCircle,
-  faUserSecret,
-  faThermometerEmpty,
-  faThermometerQuarter,
-  faThermometerHalf,
-  faThermometerThreeQuarters,
-  faThermometerFull
+  faUserSecret
 } from '@fortawesome/free-solid-svg-icons'
 import { faComments } from '@fortawesome/free-regular-svg-icons'
 import { faGithub } from '@fortawesome/free-brands-svg-icons'
-import { library, dom } from '@fortawesome/fontawesome-svg-core'
+import { dom, library } from '@fortawesome/fontawesome-svg-core'
 import { AdminGuard } from '../app.guard'
 import { roles } from '../roles'
 
@@ -59,7 +60,7 @@ export class NavbarComponent implements OnInit {
 
   constructor (private administrationService: AdministrationService, private challengeService: ChallengeService,
     private configurationService: ConfigurationService, private userService: UserService, private ngZone: NgZone,
-    private cookieService: CookieService, private router: Router, private translate: TranslateService, private io: SocketIoService, private langService: LanguagesService, private adminGuard: AdminGuard) { }
+    private cookieService: CookieService, private router: Router, private translate: TranslateService, private io: SocketIoService, private langService: LanguagesService, private adminGuard: AdminGuard, private snackBar: MatSnackBar) { }
 
   ngOnInit () {
     this.getLanguages()
@@ -159,7 +160,14 @@ export class NavbarComponent implements OnInit {
     expires.setFullYear(expires.getFullYear() + 1)
     this.cookieService.put('language', langKey, { expires })
     if (this.languages.find((y: { key: string }) => y.key === langKey)) {
-      this.shortKeyLang = this.languages.find((y: { key: string }) => y.key === langKey).shortKey
+      const language = this.languages.find((y: { key: string }) => y.key === langKey)
+      this.shortKeyLang = language.shortKey
+      let snackBarRef = this.snackBar.open('Language has been changed to ' + language.lang, 'Force page reload', {
+        duration: 5000
+      })
+      snackBarRef.onAction().subscribe(() => {
+        location.reload()
+      })
     }
   }
 
