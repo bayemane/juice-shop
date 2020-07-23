@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2014-2020 Bjoern Kimminich.
+ * SPDX-License-Identifier: MIT
+ */
+
 const config = require('config')
 
 describe('/#/administration', () => {
@@ -5,7 +10,7 @@ describe('/#/administration', () => {
     protractor.beforeEach.login({ email: 'admin@' + config.get('application.domain'), password: 'admin123' })
 
     it('should be possible to access administration section with admin user', () => {
-      browser.get('/#/administration')
+      browser.get(protractor.basePath + '/#/administration')
       expect(browser.getCurrentUrl()).toMatch(/\/administration/)
     })
 
@@ -16,7 +21,7 @@ describe('/#/administration', () => {
     protractor.beforeEach.login({ email: 'admin@' + config.get('application.domain'), password: 'admin123' })
 
     it('should be possible for any admin user to delete feedback', () => {
-      browser.get('/#/administration')
+      browser.get(protractor.basePath + '/#/administration')
 
       $$('.mat-cell.mat-column-remove > button').first().click()
       browser.wait(protractor.ExpectedConditions.stalenessOf(element(by.js(selectFiveStarRating))), 5000)

@@ -1,7 +1,13 @@
+/*
+ * Copyright (c) 2014-2020 Bjoern Kimminich.
+ * SPDX-License-Identifier: MIT
+ */
+
 const fs = require('fs')
 const models = require('../models/index')
 const utils = require('../lib/utils')
 const insecurity = require('../lib/insecurity')
+const challenges = require('../data/datacache').challenges
 const pug = require('pug')
 const config = require('config')
 const themes = require('../views/themes/themes').themes
@@ -36,7 +42,15 @@ module.exports = function getUserProfile () {
           template = template.replace(/_navColor_/g, theme.navColor)
           template = template.replace(/_primLight_/g, theme.primLight)
           template = template.replace(/_primDark_/g, theme.primDark)
+          template = template.replace(/_logo_/g, utils.extractFilename(config.get('application.logo')))
           const fn = pug.compile(template)
+          const CSP = `img-src 'self' ${user.dataValues.profileImage}; script-src 'self' 'unsafe-eval' https://code.getmdl.io http://ajax.googleapis.com`
+          utils.solveIf(challenges.usernameXssChallenge, () => { return user.dataValues.profileImage.match(/;[ ]*script-src(.)*'unsafe-inline'/g) !== null && utils.contains(username, '<script>alert(`xss`)</script>') })
+
+          res.set({
+            'Content-Security-Policy': CSP
+          })
+
           res.send(fn(user.dataValues))
         }).catch(error => {
           next(error)

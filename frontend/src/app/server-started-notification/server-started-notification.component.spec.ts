@@ -1,4 +1,9 @@
-import { CookieModule, CookieService } from 'ngx-cookie'
+/*
+ * Copyright (c) 2014-2020 Bjoern Kimminich.
+ * SPDX-License-Identifier: MIT
+ */
+
+import { CookieService } from 'ngx-cookie-service'
 import { HttpClientTestingModule } from '@angular/common/http/testing'
 import { TranslateModule, TranslateService } from '@ngx-translate/core'
 import { MatButtonModule } from '@angular/material/button'
@@ -42,7 +47,6 @@ describe('ServerStartedNotificationComponent', () => {
     TestBed.configureTestingModule({
       imports: [
         TranslateModule.forRoot(),
-        CookieModule.forRoot(),
         HttpClientTestingModule,
         MatCardModule,
         MatButtonModule
@@ -57,13 +61,13 @@ describe('ServerStartedNotificationComponent', () => {
     })
     .compileComponents()
 
-    cookieService = TestBed.get(CookieService)
+    cookieService = TestBed.inject(CookieService)
   }))
 
   beforeEach(() => {
     fixture = TestBed.createComponent(ServerStartedNotificationComponent)
     component = fixture.componentInstance
-    cookieService.remove('continueCode')
+    cookieService.delete('continueCode')
     fixture.detectChanges()
   })
 
@@ -73,7 +77,7 @@ describe('ServerStartedNotificationComponent', () => {
 
   it('should keep continue code cookie after successfully restoring progress on server start', () => {
     spyOn(mockSocket,'on')
-    cookieService.put('continueCode', 'CODE')
+    cookieService.set('continueCode', 'CODE')
     component.ngOnInit()
     let callback = mockSocket.on.calls.argsFor(0)[1]
     callback()
@@ -84,7 +88,7 @@ describe('ServerStartedNotificationComponent', () => {
   it('should set auto-restore success-message when progress restore succeeds', () => {
     spyOn(mockSocket,'on')
     translateService.get.and.returnValue(of('AUTO_RESTORED_PROGRESS'))
-    cookieService.put('continueCode', 'CODE')
+    cookieService.set('continueCode', 'CODE')
     component.ngOnInit()
     let callback = mockSocket.on.calls.argsFor(0)[1]
     callback()
@@ -95,7 +99,7 @@ describe('ServerStartedNotificationComponent', () => {
   it('should translate AUTO_RESTORED_PROGRESS message', () => {
     spyOn(mockSocket,'on')
     translateService.get.and.returnValue(of('Translation of AUTO_RESTORED_PROGRESS'))
-    cookieService.put('continueCode', 'CODE')
+    cookieService.set('continueCode', 'CODE')
     component.ngOnInit()
     let callback = mockSocket.on.calls.argsFor(0)[1]
     callback()
@@ -106,7 +110,7 @@ describe('ServerStartedNotificationComponent', () => {
   it('should log errors during automatic progress restore directly to browser console', fakeAsync(() => {
     spyOn(mockSocket,'on')
     challengeService.restoreProgress.and.returnValue(throwError('Error'))
-    cookieService.put('continueCode', 'CODE')
+    cookieService.set('continueCode', 'CODE')
     console.log = jasmine.createSpy('log')
     component.ngOnInit()
     let callback = mockSocket.on.calls.argsFor(0)[1]
@@ -119,7 +123,7 @@ describe('ServerStartedNotificationComponent', () => {
     spyOn(mockSocket,'on')
     challengeService.restoreProgress.and.returnValue(throwError('Error'))
     translateService.get.and.returnValue(of('AUTO_RESTORE_PROGRESS_FAILED'))
-    cookieService.put('continueCode', 'CODE')
+    cookieService.set('continueCode', 'CODE')
     component.ngOnInit()
     let callback = mockSocket.on.calls.argsFor(0)[1]
     callback()
@@ -131,7 +135,7 @@ describe('ServerStartedNotificationComponent', () => {
     spyOn(mockSocket,'on')
     challengeService.restoreProgress.and.returnValue(throwError('Error'))
     translateService.get.and.returnValue(of('Translation of AUTO_RESTORE_PROGRESS_FAILED: error'))
-    cookieService.put('continueCode', 'CODE')
+    cookieService.set('continueCode', 'CODE')
     component.ngOnInit()
     let callback = mockSocket.on.calls.argsFor(0)[1]
     callback()
@@ -155,7 +159,7 @@ describe('ServerStartedNotificationComponent', () => {
 
   it('should remove the continue code cookie when clearing the progress', () => {
     component.clearProgress()
-    expect(cookieService.get('continueCode')).toBeUndefined()
+    expect(cookieService.get('continueCode')).toBe('')
     expect(component.hackingProgress.cleared).toBe(true)
   })
 })

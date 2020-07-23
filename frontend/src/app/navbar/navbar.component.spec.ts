@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2014-2020 Bjoern Kimminich.
+ * SPDX-License-Identifier: MIT
+ */
+
 import { ChallengeService } from '../Services/challenge.service'
 import { SearchResultComponent } from '../search-result/search-result.component'
 import { TranslateModule, TranslateService } from '@ngx-translate/core'
@@ -18,7 +23,7 @@ import { AdministrationService } from '../Services/administration.service'
 import { RouterTestingModule } from '@angular/router/testing'
 import { MatMenuModule } from '@angular/material/menu'
 import { MatTooltipModule } from '@angular/material/tooltip'
-import { CookieModule, CookieService } from 'ngx-cookie'
+import { CookieService } from 'ngx-cookie-service'
 import { SocketIoService } from '../Services/socket-io.service'
 import { of, throwError } from 'rxjs'
 import { MatCardModule } from '@angular/material/card'
@@ -67,7 +72,7 @@ describe('NavbarComponent', () => {
     userService.isLoggedIn.next.and.returnValue({})
     challengeService = jasmine.createSpyObj('ChallengeService',['find'])
     challengeService.find.and.returnValue(of([{ solved: false }]))
-    cookieService = jasmine.createSpyObj('CookieService',['remove', 'get', 'put'])
+    cookieService = jasmine.createSpyObj('CookieService',['delete', 'get', 'set'])
     mockSocket = new MockSocket()
     socketIoService = jasmine.createSpyObj('SocketIoService', ['socket'])
     socketIoService.socket.and.returnValue(mockSocket)
@@ -82,7 +87,6 @@ describe('NavbarComponent', () => {
         ]),
         HttpClientTestingModule,
         TranslateModule.forRoot(),
-        CookieModule.forRoot(),
         BrowserAnimationsModule,
         MatToolbarModule,
         MatIconModule,
@@ -115,8 +119,8 @@ describe('NavbarComponent', () => {
     })
     .compileComponents()
 
-    location = TestBed.get(Location)
-    translateService = TestBed.get(TranslateService)
+    location = TestBed.inject(Location)
+    translateService = TestBed.inject(TranslateService)
   }))
 
   beforeEach(() => {
@@ -240,7 +244,7 @@ describe('NavbarComponent', () => {
 
   it('should remove authentication token from cookies', () => {
     component.logout()
-    expect(cookieService.remove).toHaveBeenCalledWith('token')
+    expect(cookieService.delete).toHaveBeenCalledWith('token', '/')
   })
 
   it('should remove basket id from session storage', () => {

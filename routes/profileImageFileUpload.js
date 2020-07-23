@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2014-2020 Bjoern Kimminich.
+ * SPDX-License-Identifier: MIT
+ */
+
 const utils = require('../lib/utils')
 const fs = require('fs')
 const models = require('../models/index')
@@ -21,12 +26,12 @@ module.exports = function fileUpload () {
           })
         })
         models.User.findByPk(loggedInUser.data.id).then(user => {
-          return user.update({ profileImage: loggedInUser.data.id + '.' + uploadedFileType.ext })
+          return user.update({ profileImage: `assets/public/images/uploads/${loggedInUser.data.id}.${uploadedFileType.ext}` })
         }).catch(error => {
           next(error)
         })
-        res.location('/profile')
-        res.redirect('/profile')
+        res.location(process.env.BASE_PATH + '/profile')
+        res.redirect(process.env.BASE_PATH + '/profile')
       } else {
         next(new Error('Blocked illegal activity by ' + req.connection.remoteAddress))
       }

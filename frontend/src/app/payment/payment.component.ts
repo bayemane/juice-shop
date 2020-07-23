@@ -1,5 +1,10 @@
+/*
+ * Copyright (c) 2014-2020 Bjoern Kimminich.
+ * SPDX-License-Identifier: MIT
+ */
+
 import { FormControl, Validators } from '@angular/forms'
-import { Component, OnInit } from '@angular/core'
+import { Component, NgZone, OnInit } from '@angular/core'
 import { ConfigurationService } from '../Services/configuration.service'
 import { BasketService } from '../Services/basket.service'
 import { TranslateService } from '@ngx-translate/core'
@@ -7,7 +12,6 @@ import { dom, library } from '@fortawesome/fontawesome-svg-core'
 import {
   faCartArrowDown,
   faCoffee,
-  faCreditCard,
   faGift,
   faHandHoldingUsd,
   faHeart,
@@ -16,17 +20,18 @@ import {
   faTimes,
   faTshirt
 } from '@fortawesome/free-solid-svg-icons'
-import { faCreditCard as faCredit } from '@fortawesome/free-regular-svg-icons/'
-import { faBtc, faEthereum, faLeanpub, faPatreon, faPaypal } from '@fortawesome/free-brands-svg-icons'
+import { faLeanpub, faStripe } from '@fortawesome/free-brands-svg-icons'
 import { QrCodeComponent } from '../qr-code/qr-code.component'
 import { MatDialog } from '@angular/material/dialog'
 import { ActivatedRoute, ParamMap, Router } from '@angular/router'
 import { WalletService } from '../Services/wallet.service'
 import { DeliveryService } from '../Services/delivery.service'
 import { UserService } from '../Services/user.service'
-import { CookieService } from 'ngx-cookie'
+import { CookieService } from 'ngx-cookie-service'
+import { Location } from '@angular/common'
+import { SnackBarHelperService } from '../Services/snack-bar-helper.service'
 
-library.add(faCartArrowDown, faGift, faCreditCard, faHeart, faBtc, faPaypal, faLeanpub, faEthereum, faCredit, faThumbsUp, faTshirt, faStickyNote, faHandHoldingUsd, faCoffee, faPatreon, faTimes)
+library.add(faCartArrowDown, faGift, faHeart, faLeanpub, faThumbsUp, faTshirt, faStickyNote, faHandHoldingUsd, faCoffee, faTimes, faStripe)
 dom.watch()
 
 @Component({
@@ -52,7 +57,7 @@ export class PaymentComponent implements OnInit {
   public walletBalance: number = 0
   public walletBalanceStr: string
   public totalPrice: any = 0
-  public payUsingWallet: boolean = false
+  public paymentMode: string = 'card'
   private campaigns = {
     WMNSDY2019: { validOn: 1551999600000, discount: 75 },
     WMNSDY2020: { validOn: 1583622000000, discount: 60 },
@@ -65,7 +70,12 @@ export class PaymentComponent implements OnInit {
     ORANGE2023: { validOn: 1683154800000, discount: 40 }
   }
 
-  constructor (private cookieService: CookieService, private userService: UserService, private deliveryService: DeliveryService, private walletService: WalletService, private router: Router, private dialog: MatDialog, private configurationService: ConfigurationService, private basketService: BasketService, private translate: TranslateService, private activatedRoute: ActivatedRoute) { }
+  constructor (private location: Location, private cookieService: CookieService,
+    private userService: UserService, private deliveryService: DeliveryService, private walletService: WalletService,
+    private router: Router, private dialog: MatDialog, private configurationService: ConfigurationService,
+    private basketService: BasketService, private translate: TranslateService,
+    private activatedRoute: ActivatedRoute, private ngZone: NgZone,
+    private snackBarHelperService: SnackBarHelperService) { }
 
   ngOnInit () {
     this.initTotal()
@@ -77,12 +87,12 @@ export class PaymentComponent implements OnInit {
     this.paymentPanelExpanded = localStorage.getItem('paymentPanelExpanded') ? JSON.parse(localStorage.getItem('paymentPanelExpanded')) : false
 
     this.configurationService.getApplicationConfiguration().subscribe((config) => {
-      if (config && config.application) {
-        if (config.application.twitterUrl) {
-          this.twitterUrl = config.application.twitterUrl
+      if (config && config.application && config.application.social) {
+        if (config.application.social.twitterUrl) {
+          this.twitterUrl = config.application.social.twitterUrl
         }
-        if (config.application.facebookUrl) {
-          this.facebookUrl = config.application.facebookUrl
+        if (config.application.social.facebookUrl) {
+          this.facebookUrl = config.application.social.facebookUrl
         }
         if (config.application.name) {
           this.applicationName = config.application.name
@@ -156,7 +166,11 @@ export class PaymentComponent implements OnInit {
 
   getMessage (id) {
     this.paymentId = id
-    this.payUsingWallet = false
+    this.paymentMode = 'card'
+  }
+
+  routeToPreviousUrl () {
+    this.location.back()
   }
 
   choosePayment () {
@@ -164,29 +178,26 @@ export class PaymentComponent implements OnInit {
     if (this.mode === 'wallet') {
       this.walletService.put({ balance: this.totalPrice }).subscribe(() => {
         sessionStorage.removeItem('walletTotal')
-        this.router.navigate(['/wallet'])
-      },(err) => console.log(err))
+        this.ngZone.run(() => this.router.navigate(['/wallet']))
+        this.snackBarHelperService.open('CHARGED_WALLET', 'confirmBar')
+      },(err) => {
+        console.log(err)
+        this.snackBarHelperService.open(err.error?.error, 'errorBar')
+      })
     } else if (this.mode === 'deluxe') {
-      this.userService.upgradeToDeluxe(this.payUsingWallet).subscribe(() => {
-        this.logout()
+      this.userService.upgradeToDeluxe(this.paymentMode).subscribe((data) => {
+        localStorage.setItem('token', data.token)
+        this.cookieService.set('token', data.token)
+        this.ngZone.run(() => this.router.navigate(['/deluxe-membership']))
       }, (err) => console.log(err))
     } else {
-      if (this.payUsingWallet) {
+      if (this.paymentMode === 'wallet') {
         sessionStorage.setItem('paymentId', 'wallet')
       } else {
         sessionStorage.setItem('paymentId', this.paymentId)
       }
-      this.router.navigate(['/order-summary'])
+      this.ngZone.run(() => this.router.navigate(['/order-summary']))
     }
-  }
-
-  logout () {
-    this.userService.saveLastLoginIp().subscribe((user: any) => { this.noop() }, (err) => console.log(err))
-    localStorage.removeItem('token')
-    this.cookieService.remove('token')
-    sessionStorage.removeItem('bid')
-    this.userService.isLoggedIn.next(false)
-    this.router.navigate(['/login'])
   }
 
   // tslint:disable-next-line:no-empty
@@ -196,7 +207,7 @@ export class PaymentComponent implements OnInit {
     this.dialog.open(QrCodeComponent, {
       data: {
         data: 'bitcoin:1AbKfgvw9psQ41NbLi8kufDQTezwG8DRZm',
-        url: '/redirect?to=https://blockchain.info/address/1AbKfgvw9psQ41NbLi8kufDQTezwG8DRZm',
+        url: './redirect?to=https://blockchain.info/address/1AbKfgvw9psQ41NbLi8kufDQTezwG8DRZm',
         address: '1AbKfgvw9psQ41NbLi8kufDQTezwG8DRZm',
         title: 'TITLE_BITCOIN_ADDRESS'
       }
@@ -207,7 +218,7 @@ export class PaymentComponent implements OnInit {
     this.dialog.open(QrCodeComponent, {
       data: {
         data: 'dash:Xr556RzuwX6hg5EGpkybbv5RanJoZN17kW',
-        url: '/redirect?to=https://explorer.dash.org/address/Xr556RzuwX6hg5EGpkybbv5RanJoZN17kW',
+        url: './redirect?to=https://explorer.dash.org/address/Xr556RzuwX6hg5EGpkybbv5RanJoZN17kW',
         address: 'Xr556RzuwX6hg5EGpkybbv5RanJoZN17kW',
         title: 'TITLE_DASH_ADDRESS'
       }
@@ -218,7 +229,7 @@ export class PaymentComponent implements OnInit {
     this.dialog.open(QrCodeComponent, {
       data: {
         data: '0x0f933ab9fCAAA782D0279C300D73750e1311EAE6',
-        url: '/redirect?to=https://etherscan.io/address/0x0f933ab9fcaaa782d0279c300d73750e1311eae6',
+        url: './redirect?to=https://etherscan.io/address/0x0f933ab9fcaaa782d0279c300d73750e1311eae6',
         address: '0x0f933ab9fCAAA782D0279C300D73750e1311EAE6',
         title: 'TITLE_ETHER_ADDRESS'
       }
@@ -226,7 +237,8 @@ export class PaymentComponent implements OnInit {
   }
 
   useWallet () {
-    this.payUsingWallet = true
+    this.paymentMode = 'wallet'
+    this.choosePayment()
   }
 
   resetCouponForm () {

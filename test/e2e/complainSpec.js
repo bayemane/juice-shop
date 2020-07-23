@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2014-2020 Bjoern Kimminich.
+ * SPDX-License-Identifier: MIT
+ */
+
 const config = require('config')
 const path = require('path')
 const utils = require('../../lib/utils')
@@ -8,7 +13,7 @@ describe('/#/complain', () => {
   protractor.beforeEach.login({ email: 'admin@' + config.get('application.domain'), password: 'admin123' })
 
   beforeEach(() => {
-    browser.get('/#/complain')
+    browser.get(protractor.basePath + '/#/complain')
     file = element(by.id('file'))
     complaintMessage = element(by.id('complaintMessage'))
     submitButton = element(by.id('submitButton'))
@@ -17,7 +22,7 @@ describe('/#/complain', () => {
   describe('challenge "uploadSize"', () => {
     it('should be possible to upload files greater 100 KB directly through backend', () => {
       browser.waitForAngularEnabled(false)
-      browser.executeScript(() => {
+      browser.executeScript(baseUrl => {
         const over100KB = Array.apply(null, new Array(11000)).map(String.prototype.valueOf, '1234567890')
         const blob = new Blob(over100KB, { type: 'application/pdf' })
 
@@ -25,9 +30,9 @@ describe('/#/complain', () => {
         data.append('file', blob, 'invalidSizeForClient.pdf')
 
         const request = new XMLHttpRequest()
-        request.open('POST', '/file-upload')
+        request.open('POST', baseUrl + '/file-upload')
         request.send(data)
-      })
+      }, browser.baseUrl)
       browser.driver.sleep(1000)
       browser.waitForAngularEnabled(true)
     })
@@ -37,25 +42,25 @@ describe('/#/complain', () => {
   describe('challenge "uploadType"', () => {
     it('should be possible to upload files with other extension than .pdf directly through backend', () => {
       browser.waitForAngularEnabled(false)
-      browser.executeScript(() => {
+      browser.executeScript(baseUrl => {
         const data = new FormData()
         const blob = new Blob(['test'], { type: 'application/x-msdownload' })
         data.append('file', blob, 'invalidTypeForClient.exe')
 
         const request = new XMLHttpRequest()
-        request.open('POST', '/file-upload')
+        request.open('POST', baseUrl + '/file-upload')
         request.send(data)
-      })
+      }, browser.baseUrl)
       browser.driver.sleep(1000)
       browser.waitForAngularEnabled(true)
     })
     protractor.expect.challengeSolved({ challenge: 'Upload Type' })
   })
 
-  describe('challenge "xxeFileDisclosure"', () => {
-    it('should be possible to retrieve file from Windows server via .xml upload with XXE attack', () => {
-      complaintMessage.sendKeys('XXE File Exfiltration Windows!')
-      file.sendKeys(path.resolve('test/files/xxeForWindows.xml'))
+  describe('challenge "deprecatedInterface"', () => {
+    it('should be possible to upload XML files', () => {
+      complaintMessage.sendKeys('XML all the way!')
+      file.sendKeys(path.resolve('test/files/deprecatedTypeForServer.xml'))
       submitButton.click()
     })
     protractor.expect.challengeSolved({ challenge: 'Deprecated Interface' })
@@ -97,34 +102,34 @@ describe('/#/complain', () => {
         protractor.expect.challengeSolved({ challenge: 'XXE DoS' })
       })
     })
-  }
 
-  describe('challenge "arbitraryFileWrite"', () => {
-    it('should be possible to upload zip file with filenames having path traversal', () => {
-      complaintMessage.sendKeys('Zip Slip!')
-      file.sendKeys(path.resolve('test/files/arbitraryFileWrite.zip'))
-      submitButton.click()
-    })
-    protractor.expect.challengeSolved({ challenge: 'Arbitrary File Write' })
-  })
-
-  describe('challenge "videoXssChallenge"', () => {
-    it('should be possible to inject js in subtitles by uploading zip file with filenames having path traversal', () => {
-      const EC = protractor.ExpectedConditions
-      complaintMessage.sendKeys('Here we go!')
-      file.sendKeys(path.resolve('test/files/videoExploit.zip'))
-      submitButton.click()
-      browser.waitForAngularEnabled(false)
-      browser.get('/promotion')
-      browser.wait(EC.alertIsPresent(), 5000, "'xss' alert is not present on /promotion")
-      browser.switchTo().alert().then(alert => {
-        expect(alert.getText()).toEqual('xss')
-        alert.accept()
+    describe('challenge "arbitraryFileWrite"', () => {
+      it('should be possible to upload zip file with filenames having path traversal', () => {
+        complaintMessage.sendKeys('Zip Slip!')
+        file.sendKeys(path.resolve('test/files/arbitraryFileWrite.zip'))
+        submitButton.click()
       })
-      browser.get('/')
-      browser.driver.sleep(5000)
-      browser.waitForAngularEnabled(true)
+      protractor.expect.challengeSolved({ challenge: 'Arbitrary File Write' })
     })
-    protractor.expect.challengeSolved({ challenge: 'Video XSS' })
-  })
+
+    describe('challenge "videoXssChallenge"', () => {
+      it('should be possible to inject js in subtitles by uploading zip file with filenames having path traversal', () => {
+        const EC = protractor.ExpectedConditions
+        complaintMessage.sendKeys('Here we go!')
+        file.sendKeys(path.resolve('test/files/videoExploit.zip'))
+        submitButton.click()
+        browser.waitForAngularEnabled(false)
+        browser.get(protractor.basePath + '/promotion')
+        browser.wait(EC.alertIsPresent(), 5000, "'xss' alert is not present on /promotion")
+        browser.switchTo().alert().then(alert => {
+          expect(alert.getText()).toEqual('xss')
+          alert.accept()
+        })
+        browser.get(protractor.basePath + '/')
+        browser.driver.sleep(5000)
+        browser.waitForAngularEnabled(true)
+      })
+      protractor.expect.challengeSolved({ challenge: 'Video XSS' })
+    })
+  }
 })

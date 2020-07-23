@@ -1,7 +1,12 @@
+/*
+ * Copyright (c) 2014-2020 Bjoern Kimminich.
+ * SPDX-License-Identifier: MIT
+ */
+
 import { TranslateService } from '@ngx-translate/core'
 import { ChallengeService } from '../Services/challenge.service'
 import { ChangeDetectorRef, Component, NgZone, OnInit } from '@angular/core'
-import { CookieService } from 'ngx-cookie'
+import { CookieService } from 'ngx-cookie-service'
 import { SocketIoService } from '../Services/socket-io.service'
 
 import { dom, library } from '@fortawesome/fontawesome-svg-core'
@@ -11,7 +16,7 @@ library.add(faTrash)
 dom.watch()
 
 interface HackingProgress {
-  autoRestoreMessage: string | null,
+  autoRestoreMessage: string | null
   cleared: boolean
 }
 
@@ -59,7 +64,12 @@ export class ServerStartedNotificationComponent implements OnInit {
   }
 
   clearProgress () {
-    this.cookieService.remove('continueCode')
+    this.cookieService.delete('continueCode', '/')
+    localStorage.removeItem('displayedDifficulties')
+    localStorage.removeItem('showSolvedChallenges')
+    localStorage.removeItem('showDisabledChallenges')
+    localStorage.removeItem('showOnlyTutorialChallenges')
+    localStorage.removeItem('displayedChallengeCategories')
     this.hackingProgress.cleared = true
   }
 

@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2014-2020 Bjoern Kimminich.
+ * SPDX-License-Identifier: MIT
+ */
+
 import { async, ComponentFixture, TestBed } from '@angular/core/testing'
 import { TranslateModule } from '@ngx-translate/core'
 import { MatIconModule } from '@angular/material/icon'
@@ -6,7 +11,6 @@ import { MatFormFieldModule } from '@angular/material/form-field'
 import { MatCardModule } from '@angular/material/card'
 import { MatInputModule } from '@angular/material/input'
 
-import { CookieModule } from 'ngx-cookie'
 import { HttpClientTestingModule } from '@angular/common/http/testing'
 import { RouterTestingModule } from '@angular/router/testing'
 
@@ -29,7 +33,6 @@ describe('OAuthComponent', () => {
         ]
         ),
         ReactiveFormsModule,
-        CookieModule.forRoot(),
         TranslateModule.forRoot(),
         MatInputModule,
         MatIconModule ,

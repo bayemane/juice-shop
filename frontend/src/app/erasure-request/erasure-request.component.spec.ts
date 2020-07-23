@@ -1,18 +1,26 @@
+/*
+ * Copyright (c) 2014-2020 Bjoern Kimminich.
+ * SPDX-License-Identifier: MIT
+ */
+
 import { async, ComponentFixture, fakeAsync, TestBed } from '@angular/core/testing'
 import { ErasureRequestComponent } from './erasure-request.component'
 import { DataSubjectService } from '../Services/data-subject.service'
 import { RouterTestingModule } from '@angular/router/testing'
 import { UserService } from '../Services/user.service'
 import { Location } from '@angular/common'
-import { CookieService } from 'ngx-cookie'
+import { CookieService } from 'ngx-cookie-service'
 import { SecurityQuestionService } from '../Services/security-question.service'
 import { TranslateModule, TranslateService } from '@ngx-translate/core'
-import { MatButtonModule, MatCardModule, MatFormFieldModule, MatInputModule } from '@angular/material'
 import { MatSnackBarModule } from '@angular/material/snack-bar'
 import { HttpClientTestingModule } from '@angular/common/http/testing'
 import { ReactiveFormsModule } from '@angular/forms'
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations'
 import { of, throwError } from 'rxjs'
+import { MatFormFieldModule } from '@angular/material/form-field'
+import { MatInputModule } from '@angular/material/input'
+import { MatCardModule } from '@angular/material/card'
+import { MatButtonModule } from '@angular/material/button'
 
 describe('ErasureRequestComponent', () => {
   let component: ErasureRequestComponent
@@ -24,7 +32,7 @@ describe('ErasureRequestComponent', () => {
   let location: Location
 
   beforeEach(async(() => {
-    cookieService = jasmine.createSpyObj('CookieService',['remove', 'get', 'put'])
+    cookieService = jasmine.createSpyObj('CookieService',['delete', 'get', 'set'])
     userService = jasmine.createSpyObj('UserService',['saveLastLoginIp'])
     userService.saveLastLoginIp.and.returnValue(of({}))
     userService.isLoggedIn = jasmine.createSpyObj('userService.isLoggedIn',['next'])
@@ -59,7 +67,7 @@ describe('ErasureRequestComponent', () => {
       ]
     }).compileComponents()
 
-    location = TestBed.get(Location)
+    location = TestBed.inject(Location)
   }))
 
   beforeEach(() => {
@@ -139,7 +147,7 @@ describe('ErasureRequestComponent', () => {
 
   it('should remove authentication token from cookies', () => {
     component.logout()
-    expect(cookieService.remove).toHaveBeenCalledWith('token')
+    expect(cookieService.delete).toHaveBeenCalledWith('token', '/')
   })
 
   it('should remove basket id from session storage', () => {

@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2014-2020 Bjoern Kimminich.
+ * SPDX-License-Identifier: MIT
+ */
+
 /* jslint node: true */
 const models = require('../models/index')
 const datacache = require('./datacache')
@@ -11,6 +16,8 @@ const fs = require('fs')
 const path = require('path')
 const util = require('util')
 const { safeLoad } = require('js-yaml')
+const Entities = require('html-entities').AllHtmlEntities
+const entities = new Entities()
 
 const readFile = util.promisify(fs.readFile)
 
@@ -47,14 +54,15 @@ module.exports = async () => {
 }
 
 async function createChallenges () {
-  const showHints = config.get('application.showChallengeHints')
+  const showHints = config.get('challenges.showHints')
 
   const challenges = await loadStaticData('challenges')
 
   await Promise.all(
-    challenges.map(async ({ name, category, description, difficulty, hint, hintUrl, key, disabledEnv }) => {
-      const effectiveDisabledEnv = utils.determineDisabledContainerEnv(disabledEnv)
-      description = description.replace(/juice-sh\.op/, config.get('application.domain'))
+    challenges.map(async ({ name, category, description, difficulty, hint, hintUrl, key, disabledEnv, tutorial }) => {
+      const effectiveDisabledEnv = utils.determineDisabledEnv(disabledEnv)
+      description = description.replace('juice-sh.op', config.get('application.domain'))
+      description = description.replace('&lt;iframe width=&quot;100%&quot; height=&quot;166&quot; scrolling=&quot;no&quot; frameborder=&quot;no&quot; allow=&quot;autoplay&quot; src=&quot;https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/tracks/771984076&amp;color=%23ff5500&amp;auto_play=true&amp;hide_related=false&amp;show_comments=true&amp;show_user=true&amp;show_reposts=false&amp;show_teaser=true&quot;&gt;&lt;/iframe&gt;', entities.encode(config.get('challenges.xssBonusPayload')))
       hint = hint.replace(/OWASP Juice Shop's/, `${config.get('application.name')}'s`)
 
       try {
@@ -67,7 +75,8 @@ async function createChallenges () {
           solved: false,
           hint: showHints ? hint : null,
           hintUrl: showHints ? hintUrl : null,
-          disabledEnv: config.get('challenges.safetyOverride') ? null : effectiveDisabledEnv
+          disabledEnv: config.get('challenges.safetyOverride') ? null : effectiveDisabledEnv,
+          tutorialOrder: tutorial ? tutorial.order : null
         })
       } catch (err) {
         logger.error(`Could not insert Challenge ${name}: ${err.message}`)
@@ -80,7 +89,7 @@ async function createUsers () {
   const users = await loadStaticData('users')
 
   await Promise.all(
-    users.map(async ({ username, email, password, customDomain, key, role, deletedFlag, profileImage, securityQuestion, feedback, address, card, totpSecret: totpSecret = '' }) => {
+    users.map(async ({ username, email, password, customDomain, key, role, deletedFlag, profileImage, securityQuestion, feedback, address, card, totpSecret = '' }) => {
       try {
         const completeEmail = customDomain ? email : `${email}@${config.get('application.domain')}`
         const user = await models.User.create({
@@ -88,12 +97,13 @@ async function createUsers () {
           email: completeEmail,
           password,
           role,
-          profileImage: profileImage || 'default.svg',
+          deluxeToken: role === insecurity.roles.deluxe ? insecurity.deluxeToken(completeEmail) : '',
+          profileImage: `assets/public/images/uploads/${profileImage || 'default.svg'}`,
           totpSecret
         })
         datacache.users[key] = user
         if (securityQuestion) await createSecurityAnswer(user.id, securityQuestion.id, securityQuestion.answer)
-        if (feedback) await createFeedback(user.id, feedback.comment, feedback.rating)
+        if (feedback) await createFeedback(user.id, feedback.comment, feedback.rating, user.email)
         if (deletedFlag) await deleteUser(user.id)
         if (address) await createAddresses(user.id, address)
         if (card) await createCards(user.id, card)
@@ -119,16 +129,17 @@ async function createWallet () {
 }
 
 async function createDeliveryMethods () {
-  const delivery = await loadStaticData('delivery')
+  const deliveries = await loadStaticData('deliveries')
 
   await Promise.all(
-    delivery.map(async ({ name, price, deluxePrice, eta }) => {
+    deliveries.map(async ({ name, price, deluxePrice, eta, icon }) => {
       try {
         await models.Delivery.create({
           name,
           price,
           deluxePrice,
-          eta
+          eta,
+          icon
         })
       } catch (err) {
         logger.error(`Could not insert Delivery Method: ${err.message}`)
@@ -221,13 +232,14 @@ function createMemories () {
   })]
   Array.prototype.push.apply(memories, Promise.all(
     config.get('memories').map((memory) => {
+      let tmpImageFileName = memory.image
       if (utils.startsWith(memory.image, 'http')) {
         const imageUrl = memory.image
-        memory.image = utils.extractFilename(memory.image)
-        utils.downloadToFile(imageUrl, 'assets/public/images/uploads/' + memory.image)
+        tmpImageFileName = utils.extractFilename(memory.image)
+        utils.downloadToFile(imageUrl, 'frontend/dist/frontend/assets/public/images/uploads/' + tmpImageFileName)
       }
       return models.Memory.create({
-        imagePath: 'assets/public/images/uploads/' + memory.image,
+        imagePath: 'assets/public/images/uploads/' + tmpImageFileName,
         caption: memory.caption,
         UserId: datacache.users[memory.user].id
       }).catch((err) => {
@@ -280,7 +292,7 @@ function createProducts () {
     blueprint = utils.extractFilename(blueprint)
     utils.downloadToFile(blueprintUrl, 'frontend/dist/frontend/assets/public/images/products/' + blueprint)
   }
-  datacache.retrieveBlueprintChallengeFile = blueprint // TODO Do not cache separately but load from config where needed (same as keywordsForPastebinDataLeakChallenge)
+  datacache.retrieveBlueprintChallengeFile = blueprint
 
   return Promise.all(
     products.map(
@@ -314,7 +326,7 @@ function createProducts () {
               reviews.map(({ text, author }) =>
                 mongodb.reviews.insert({
                   message: text,
-                  author: `${author}@${config.get('application.domain')}`,
+                  author: datacache.users[author].email,
                   product: id,
                   likesCount: 0,
                   likedBy: []
@@ -343,7 +355,8 @@ function createBaskets () {
     { UserId: 1 },
     { UserId: 2 },
     { UserId: 3 },
-    { UserId: 11 }
+    { UserId: 11 },
+    { UserId: 16 }
   ]
 
   return Promise.all(
@@ -379,11 +392,21 @@ function createBasketItems () {
     },
     {
       BasketId: 3,
-      ProductId: 5,
+      ProductId: 4,
       quantity: 1
     },
     {
       BasketId: 4,
+      ProductId: 4,
+      quantity: 2
+    },
+    {
+      BasketId: 5,
+      ProductId: 3,
+      quantity: 5
+    },
+    {
+      BasketId: 5,
       ProductId: 4,
       quantity: 2
     }
@@ -423,9 +446,10 @@ function createAnonymousFeedback () {
   )
 }
 
-function createFeedback (UserId, comment, rating) {
-  return models.Feedback.create({ UserId, comment, rating }).catch((err) => {
-    logger.error(`Could not insert Feedback ${comment} mapped to UserId ${UserId}: ${err.message}`)
+function createFeedback (UserId, comment, rating, author) {
+  const authoredComment = author ? `${comment} (***${author.slice(3)})` : `${comment} (anonymous)`
+  return models.Feedback.create({ UserId, comment: authoredComment, rating }).catch((err) => {
+    logger.error(`Could not insert Feedback ${authoredComment} mapped to UserId ${UserId}: ${err.message}`)
   })
 }
 
@@ -515,27 +539,17 @@ function createRecycle (data) {
   })
 }
 
-function createSecurityQuestions () {
-  const questions = [
-    'Your eldest siblings middle name?',
-    'Mother\'s maiden name?',
-    'Mother\'s birth date? (MM/DD/YY)',
-    'Father\'s birth date? (MM/DD/YY)',
-    'Maternal grandmother\'s first name?',
-    'Paternal grandmother\'s first name?',
-    'Name of your favorite pet?',
-    'Last name of dentist when you were a teenager? (Do not include \'Dr.\')',
-    'Your ZIP/postal code when you were a teenager?',
-    'Company you first work for as an adult?',
-    'Your favorite book?',
-    'Your favorite movie?',
-    'Number of one of your customer or ID cards?'
-  ]
+async function createSecurityQuestions () {
+  const questions = await loadStaticData('securityQuestions')
 
-  return Promise.all(
-    questions.map((question) => models.SecurityQuestion.create({ question }).catch((err) => {
-      logger.error(`Could not insert SecurityQuestion ${question}: ${err.message}`)
-    }))
+  await Promise.all(
+    questions.map(async ({ question }) => {
+      try {
+        await models.SecurityQuestion.create({ question })
+      } catch (err) {
+        logger.error(`Could not insert SecurityQuestion ${question}: ${err.message}`)
+      }
+    })
   )
 }
 
@@ -551,12 +565,14 @@ function createOrders () {
   const basket1Products = [
     {
       quantity: 3,
+      id: products[0].id,
       name: products[0].name,
       price: products[0].price,
       total: products[0].price * 3
     },
     {
       quantity: 1,
+      id: products[1].id,
       name: products[1].name,
       price: products[1].price,
       total: products[1].price * 1
@@ -566,9 +582,27 @@ function createOrders () {
   const basket2Products = [
     {
       quantity: 3,
+      id: products[2].id,
       name: products[2].name,
       price: products[2].price,
       total: products[2].price * 3
+    }
+  ]
+
+  const basket3Products = [
+    {
+      quantity: 3,
+      id: products[0].id,
+      name: products[0].name,
+      price: products[0].price,
+      total: products[0].price * 3
+    },
+    {
+      quantity: 5,
+      id: products[3].id,
+      name: products[3].name,
+      price: products[3].price,
+      total: products[3].price * 5
     }
   ]
 
@@ -586,6 +620,14 @@ function createOrders () {
       email: (email ? email.replace(/[aeiou]/gi, '*') : undefined),
       totalPrice: basket2Products[0].total,
       products: basket2Products,
+      eta: '0',
+      delivered: true
+    },
+    {
+      orderId: insecurity.hash('demo').slice(0, 4) + '-' + utils.randomHexString(16),
+      email: 'demo'.replace(/[aeiou]/gi, '*'),
+      totalPrice: basket3Products[0].total + basket3Products[1].total,
+      products: basket3Products,
       eta: '0',
       delivered: true
     }

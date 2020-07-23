@@ -1,15 +1,22 @@
+/*
+ * Copyright (c) 2014-2020 Bjoern Kimminich.
+ * SPDX-License-Identifier: MIT
+ */
+
 const config = require('config')
+const utils = require('../../lib/utils')
 const pastebinLeakProduct = config.get('products').filter(product => product.keywordsForPastebinDataLeakChallenge)[0]
 
 describe('/#/contact', () => {
-  let comment, rating, submitButton, captcha
+  let comment, rating, submitButton, captcha, snackBar
 
   beforeEach(() => {
-    browser.get('/#/contact')
+    browser.get(protractor.basePath + '/#/contact')
     comment = element(by.id('comment'))
     rating = $$('.br-unit').last()
     captcha = element(by.id('captchaControl'))
     submitButton = element(by.id('submitButton'))
+    snackBar = element(by.css('.mat-simple-snackbar-action.ng-star-inserted')).element(by.css('.mat-focus-indicator.mat-button.mat-button-base'))
     solveNextCaptcha()
   })
 
@@ -30,45 +37,50 @@ describe('/#/contact', () => {
 
       submitButton.click()
 
-      browser.get('/#/administration')
+      browser.get(protractor.basePath + '/#/administration')
       expect($$('mat-row mat-cell.mat-column-user').last().getText()).toMatch('2')
     })
 
     protractor.expect.challengeSolved({ challenge: 'Forged Feedback' })
   })
 
-  describe('challenge "persistedXssFeedback"', () => {
-    protractor.beforeEach.login({ email: 'admin@' + config.get('application.domain'), password: 'admin123' })
+  if (!utils.disableOnContainerEnv()) {
+    describe('challenge "persistedXssFeedback"', () => {
+      protractor.beforeEach.login({ email: 'admin@' + config.get('application.domain'), password: 'admin123' })
 
-    it('should be possible to trick the sanitization with a masked XSS attack', () => {
-      const EC = protractor.ExpectedConditions
+      it('should be possible to trick the sanitization with a masked XSS attack', () => {
+        const EC = protractor.ExpectedConditions
 
-      comment.sendKeys('<<script>Foo</script>iframe src="javascript:alert(`xss`)">')
-      rating.click()
+        comment.sendKeys('<<script>Foo</script>iframe src="javascript:alert(`xss`)">')
+        rating.click()
 
-      submitButton.click()
+        submitButton.click()
 
-      browser.waitForAngularEnabled(false)
-      browser.get('/#/about')
-      browser.wait(EC.alertIsPresent(), 15000, "'xss' alert is not present on /#/about")
-      browser.switchTo().alert().then(alert => {
-        expect(alert.getText()).toEqual('xss')
-        alert.accept()
+        browser.sleep(5000)
+
+        browser.waitForAngularEnabled(false)
+        browser.get(protractor.basePath + '/#/about')
+
+        browser.wait(EC.alertIsPresent(), 15000, "'xss' alert is not present on /#/about")
+        browser.switchTo().alert().then(alert => {
+          expect(alert.getText()).toEqual('xss')
+          alert.accept()
+        })
+
+        browser.get(protractor.basePath + '/#/administration')
+        browser.wait(EC.alertIsPresent(), 15000, "'xss' alert is not present on /#/administration")
+        browser.switchTo().alert().then(alert => {
+          expect(alert.getText()).toEqual('xss')
+          alert.accept()
+          $$('.mat-cell.mat-column-remove > button').last().click()
+          browser.wait(EC.stalenessOf(element(by.tagName('iframe'))), 5000)
+        })
+        browser.waitForAngularEnabled(true)
       })
 
-      browser.get('/#/administration')
-      browser.wait(EC.alertIsPresent(), 15000, "'xss' alert is not present on /#/administration")
-      browser.switchTo().alert().then(alert => {
-        expect(alert.getText()).toEqual('xss')
-        alert.accept()
-        $$('.mat-cell.mat-column-remove > button').last().click()
-        browser.wait(EC.stalenessOf(element(by.tagName('iframe'))), 5000)
-      })
-      browser.waitForAngularEnabled(true)
+      protractor.expect.challengeSolved({ challenge: 'Server-side XSS Protection' })
     })
-
-    protractor.expect.challengeSolved({ challenge: 'Server-side XSS Protection' })
-  })
+  }
 
   describe('challenge "vulnerableComponent"', () => {
     it('should be possible to post known vulnerable component(s) as feedback', () => {
@@ -128,7 +140,7 @@ describe('/#/contact', () => {
 
   describe('challenge "zeroStars"', () => {
     it('should be possible to post feedback with zero stars by double-clicking rating widget', () => {
-      browser.executeAsyncScript(() => {
+      browser.executeAsyncScript(baseUrl => {
         var callback = arguments[arguments.length - 1] // eslint-disable-line
         var xhttp = new XMLHttpRequest()
         var captcha
@@ -139,7 +151,7 @@ describe('/#/contact', () => {
           }
         }
 
-        xhttp.open('GET', 'http://localhost:3000/rest/captcha/', true)
+        xhttp.open('GET', baseUrl + '/rest/captcha/', true)
         xhttp.setRequestHeader('Content-type', 'text/plain')
         xhttp.send()
 
@@ -152,25 +164,33 @@ describe('/#/contact', () => {
             }
           }
 
-          xhttp.open('POST', 'http://localhost:3000/api/Feedbacks', true)
+          xhttp.open('POST', baseUrl + '/api/Feedbacks', true)
           xhttp.setRequestHeader('Content-type', 'application/json')
           xhttp.send(JSON.stringify({"captchaId": _captcha.captchaId, "captcha": `${_captcha.answer}`, "comment": "Comment", "rating": 0})) // eslint-disable-line
         }
-      })
+      }, browser.baseUrl)
     })
 
     protractor.expect.challengeSolved({ challenge: 'Zero Stars' })
   })
 
   describe('challenge "captchaBypass"', () => {
+    const EC = protractor.ExpectedConditions
+
     it('should be possible to post 10 or more customer feedbacks in less than 10 seconds', () => {
+      browser.ignoreSynchronization = true
+
       for (var i = 0; i < 11; i++) {
         comment.sendKeys('Spam #' + i)
         rating.click()
         submitButton.click()
-        browser.sleep(200)
+        browser.wait(EC.visibilityOf(snackBar), 100, 'SnackBar did not become visible')
+        snackBar.click()
+        browser.sleep(100)
         solveNextCaptcha() // first CAPTCHA was already solved in beforeEach
       }
+
+      browser.ignoreSynchronization = false
     })
 
     protractor.expect.challengeSolved({ challenge: 'CAPTCHA Bypass' })

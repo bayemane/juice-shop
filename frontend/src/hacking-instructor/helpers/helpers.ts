@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2014-2020 Bjoern Kimminich.
+ * SPDX-License-Identifier: MIT
+ */
+
 export function sleep (timeInMs: number): Promise<void> {
   return new Promise((resolved) => {
     setTimeout(resolved, timeInMs)
@@ -91,6 +96,52 @@ export function waitForAngularRouteToBeVisited (route: String) {
   return async () => {
     while (true) {
       if (window.location.hash === `#/${route}`) {
+        break
+      }
+      await sleep(100)
+    }
+  }
+}
+
+export function waitForLogIn () {
+  return async () => {
+    while (true) {
+      if (localStorage.getItem('token') !== null) {
+        break
+      }
+      await sleep(100)
+    }
+  }
+}
+
+export function waitForLogOut () {
+  return async () => {
+    while (true) {
+      if (localStorage.getItem('token') === null) {
+        break
+      }
+      await sleep(100)
+    }
+  }
+}
+
+/**
+ * see https://stackoverflow.com/questions/7798748/find-out-whether-chrome-console-is-open/48287643#48287643
+ */
+export function waitForDevTools () {
+  let checkStatus = false
+
+  const element = new Image()
+  Object.defineProperty(element, 'id', {
+    get: function () {
+      checkStatus = true
+    }
+  })
+
+  return async () => {
+    while (true) {
+      console.dir(element)
+      if (checkStatus) {
         break
       }
       await sleep(100)

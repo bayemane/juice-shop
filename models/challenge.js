@@ -1,5 +1,10 @@
+/*
+ * Copyright (c) 2014-2020 Bjoern Kimminich.
+ * SPDX-License-Identifier: MIT
+ */
+
 /* jslint node: true */
-module.exports = (sequelize, { STRING, INTEGER, BOOLEAN }) => {
+module.exports = (sequelize, { STRING, INTEGER, BOOLEAN, NUMBER }) => {
   const Challenge = sequelize.define('Challenge', {
     key: STRING,
     name: STRING,
@@ -9,7 +14,8 @@ module.exports = (sequelize, { STRING, INTEGER, BOOLEAN }) => {
     hint: STRING,
     hintUrl: STRING,
     solved: BOOLEAN,
-    disabledEnv: STRING
+    disabledEnv: STRING,
+    tutorialOrder: NUMBER
   })
   return Challenge
 }

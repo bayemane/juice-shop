@@ -1,8 +1,13 @@
+/*
+ * Copyright (c) 2014-2020 Bjoern Kimminich.
+ * SPDX-License-Identifier: MIT
+ */
+
 import { TranslateService } from '@ngx-translate/core'
 import { ChallengeService } from '../Services/challenge.service'
 import { ConfigurationService } from '../Services/configuration.service'
 import { ChangeDetectorRef, Component, NgZone, OnInit } from '@angular/core'
-import { CookieService } from 'ngx-cookie'
+import { CookieService } from 'ngx-cookie-service'
 import { CountryMappingService } from 'src/app/Services/country-mapping.service'
 import { SocketIoService } from '../Services/socket-io.service'
 
@@ -13,17 +18,17 @@ library.add(faGlobe, faFlagCheckered, faClipboard)
 dom.watch()
 
 interface ChallengeSolvedMessage {
-  challenge: string,
-  hidden?: any,
-  isRestore?: any,
-  flag: any,
+  challenge: string
+  hidden?: any
+  isRestore?: any
+  flag: any
   key?: any
 }
 
 interface ChallengeSolvedNotification {
-  message: string,
-  flag: string,
-  country?: { code: string, name: string },
+  message: string
+  flag: string
+  country?: { code: string; name: string }
   copied: boolean
 }
 
@@ -113,7 +118,7 @@ export class ChallengeSolvedNotificationComponent implements OnInit {
       }
       let expires = new Date()
       expires.setFullYear(expires.getFullYear() + 1)
-      this.cookieService.put('continueCode', continueCode, { expires })
+      this.cookieService.set('continueCode', continueCode, expires, '/')
     },(err) => console.log(err))
   }
 

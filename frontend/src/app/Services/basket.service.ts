@@ -1,11 +1,17 @@
+/*
+ * Copyright (c) 2014-2020 Bjoern Kimminich.
+ * SPDX-License-Identifier: MIT
+ */
+
 import { environment } from '../../environments/environment'
 import { Injectable } from '@angular/core'
 import { HttpClient } from '@angular/common/http'
 import { catchError, map } from 'rxjs/operators'
+import { Observable, Subject } from 'rxjs'
 
 interface OrderDetail {
-  paymentId: string,
-  addressId: string,
+  paymentId: string
+  addressId: string
   deliveryMethodId: string
 }
 
@@ -15,6 +21,7 @@ interface OrderDetail {
 export class BasketService {
 
   public hostServer = environment.hostServer
+  public itemTotal = new Subject<any>()
   private host = this.hostServer + '/api/BasketItems'
 
   constructor (private http: HttpClient) { }
@@ -47,4 +54,13 @@ export class BasketService {
     return this.http.put(this.hostServer + '/rest/basket/' + id + '/coupon/' + coupon, {}).pipe(map((response: any) => response.discount), catchError((error) => { throw error }))
   }
 
+  updateNumberOfCardItems () {
+    this.find(parseInt(sessionStorage.getItem('bid'), 10)).subscribe((basket) => {
+      this.itemTotal.next(basket.Products.reduce((itemTotal, product) => itemTotal + product.BasketItem.quantity, 0))
+    },(err) => console.log(err))
+  }
+
+  getItemTotal (): Observable<any> {
+    return this.itemTotal.asObservable()
+  }
 }

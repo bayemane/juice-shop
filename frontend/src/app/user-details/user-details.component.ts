@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2014-2020 Bjoern Kimminich.
+ * SPDX-License-Identifier: MIT
+ */
+
 import { UserService } from '../Services/user.service'
 import { Component, Inject, OnInit } from '@angular/core'
 import { MAT_DIALOG_DATA } from '@angular/material/dialog'
@@ -15,7 +20,7 @@ dom.watch()
 export class UserDetailsComponent implements OnInit {
 
   public user: any
-  constructor (@Inject(MAT_DIALOG_DATA) public dialogData: any,private userService: UserService) { }
+  constructor (@Inject(MAT_DIALOG_DATA) public dialogData: any, private userService: UserService) { }
 
   ngOnInit () {
     this.userService.get(this.dialogData.id).subscribe((user) => {
